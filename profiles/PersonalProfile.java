@@ -57,17 +57,19 @@ public class PersonalProfile extends AppCompatActivity {
 		this.user = new Person(user_data,this);
 	}
 	
-	protected void configureToolbar(){
-		Toolbar toolbar = (Toolbar)findViewById(R.id.personal_toolbar);
+	protected void configureToolbar() {
+		Toolbar toolbar = (Toolbar) findViewById(R.id.personal_toolbar);
 		setSupportActionBar(toolbar);
-  		ActionBar actionbar = getSupportActionBar();
+		ActionBar actionbar = getSupportActionBar();
 		
-		if(actionbar!= null)
+		if (actionbar != null) {
 			actionbar.setDisplayHomeAsUpEnabled(true);
+			actionbar.setDisplayShowTitleEnabled(false);
+		}
 	}
 	
 	protected void updateAvatar(){
-		ImageView personal_image = (ImageView)findViewById(R.id.personal_image);
+		ImageView personal_image = (ImageView)findViewById(R.id.personal_image_foreground);
 		String image_path = this.user.getImagePath();
 		Bitmap bitmap = BitmapFactory.decodeFile(image_path);
 		personal_image.setImageBitmap(bitmap);
@@ -78,7 +80,7 @@ public class PersonalProfile extends AppCompatActivity {
 		AppBarLayout personal_appbar = findViewById(R.id.personal_appbar);
 		float screen_width = getResources().getDisplayMetrics().widthPixels;
 		CoordinatorLayout.LayoutParams appbar_params = (CoordinatorLayout.LayoutParams)personal_appbar.getLayoutParams();
-		appbar_params.height = (int)screen_width;
+		//appbar_params.height = (int)screen_width;
 	}
 	
 	public void initDataView(){
