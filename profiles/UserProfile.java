@@ -241,10 +241,7 @@ public class UserProfile extends PersonalProfile{
 		 	Uri uri = data.getData();
 		 	
 		 	try {
-				Bitmap original = MediaStore.Images.Media.getBitmap(this.getContentResolver(), uri);
-				ByteArrayOutputStream out = new ByteArrayOutputStream();
-				original.compress(Bitmap.CompressFormat.JPEG, 70, out);
-				Bitmap image = BitmapFactory.decodeStream(new ByteArrayInputStream(out.toByteArray()));
+				Bitmap image = MediaStore.Images.Media.getBitmap(this.getContentResolver(), uri);
 				int height = image.getHeight();
 				int width = image.getWidth();
 				int size = 0;
@@ -264,10 +261,11 @@ public class UserProfile extends PersonalProfile{
 				
 				image = Bitmap.createBitmap(image, padx,pady,size, size);
 				
-				int root_width = this.getWindow().getDecorView().getWidth();
+				int root_width = this.getWindow().getDecorView().getWidth()/4;
 				
 				image = Bitmap.createScaledBitmap(image, root_width, root_width, true);
 				
+				image = this.compress(image);
 				
 				String image_folder = MainActivity.FILES_PATH;
 				String image_name = "user"; //new String(Long.toHexString(Double.doubleToLongBits(Math.random())));
@@ -285,6 +283,130 @@ public class UserProfile extends PersonalProfile{
 			
 		}
 	}
+	
+	
+	private Bitmap compress(Bitmap orig){
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		orig.compress(Bitmap.CompressFormat.JPEG, 40, out);
+		ByteArrayInputStream in = new ByteArrayInputStream(out.toByteArray());
+		Bitmap compressed = BitmapFactory.decodeStream(in);
+		
+		return compressed;
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	
 	
 	
