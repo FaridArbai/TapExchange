@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/fill_data_layout"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp"
+    android:paddingLeft="45dp"
+    android:paddingRight="45dp"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/fill_data_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="Add information"
+        android:textSize="25sp"/>
+
+    <android.support.constraint.ConstraintLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="30dp">
+
+        <TextView
+            android:id="@+id/section_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Section"
+            android:textSize="20sp" />
+
+        <Spinner
+            android:id="@+id/section_spinner"
+            android:layout_width="wrap_content"
+            android:layout_height="26sp"
+            app:layout_constraintLeft_toRightOf="@+id/section_title"
+            app:layout_constraintBottom_toBottomOf="@+id/section_title"
+            android:layout_gravity="center"
+            android:layout_marginTop="5dp"
+            android:layout_marginLeft="20dp"
+            android:entries="@array/sections_array" />
+
+        <TextView
+            android:id="@+id/type_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintTop_toBottomOf="@+id/section_title"
+            android:layout_marginTop="20dp"
+            android:text="Type"
+            android:textSize="20sp" />
+
+        <Spinner
+            android:id="@+id/type_spinner"
+            android:layout_width="wrap_content"
+            android:layout_height="26sp"
+            app:layout_constraintRight_toRightOf="@+id/section_spinner"
+            app:layout_constraintBottom_toBottomOf="@+id/type_title"
+            android:layout_gravity="center"
+            android:layout_marginTop="10dp"
+            android:layout_marginLeft="20dp"
+            android:entries="@array/sections_array" />
+    </android.support.constraint.ConstraintLayout>
+
+    <EditText
+        android:id="@+id/entry_data"
+        android:layout_width="match_parent"
+        android:layout_height="40sp"
+        android:hint="Type the entry here"
+        android:layout_gravity="center"
+        android:layout_marginTop="30dp"/>
+
+
+    <android.support.constraint.ConstraintLayout
+        android:id="@+id/buttons_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_gravity="center"
+        android:layout_marginTop="10dp">
+
+        <Button
+            android:id="@+id/dialog_back_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintLeft_toLeftOf="@+id/buttons_container"
+            android:layout_marginLeft="15dp"
+            android:text="BACK"
+            android:textSize="18sp"/>
+
+        <Button
+            android:id="@+id/dialog_done_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintRight_toRightOf="@+id/buttons_container"
+            android:layout_marginRight="15dp"
+            android:text="DONE"
+            android:textSize="18sp"/>
+
+    </android.support.constraint.ConstraintLayout>
+
+
+</LinearLayout>

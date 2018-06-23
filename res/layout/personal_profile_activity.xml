@@ -11,13 +11,13 @@
     <android.support.design.widget.AppBarLayout
         android:id="@+id/personal_appbar"
         android:layout_width="match_parent"
-        android:layout_height="340dp"
+        android:layout_height="wrap_content"
         android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
 
         <android.support.design.widget.CollapsingToolbarLayout
             android:id="@+id/personal_collapsing"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             app:layout_scrollFlags="scroll|exitUntilCollapsed|snap"
             app:contentScrim="?attr/colorPrimary"
             app:title=""
@@ -26,7 +26,7 @@
             <ImageView
                 android:id="@+id/personal_image_background"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="340dp"
                 android:scaleType="centerCrop"
                 android:src="@drawable/profile_background"/>
 
@@ -63,25 +63,6 @@
         </android.support.design.widget.CollapsingToolbarLayout>
     </android.support.design.widget.AppBarLayout>
 
-    <android.support.v4.widget.NestedScrollView
-        android:id="@+id/personal_nested_scroll_view"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
-
-        <LinearLayout
-            android:id="@+id/section_data_layout2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
-
-            <android.support.v7.widget.RecyclerView
-                android:id="@+id/personal_sections_view"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:padding="0dp" />
-        </LinearLayout>
-    </android.support.v4.widget.NestedScrollView>
 
     <android.support.design.widget.FloatingActionButton
         android:id="@+id/section_selection_button"
@@ -117,9 +98,14 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Unknown Username"
-            android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"/>
-
-
+            android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar" />
     </LinearLayout>
+
+    <android.support.v7.widget.RecyclerView
+            android:id="@+id/personal_sections_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="0dp"
+            app:layout_behavior="@string/appbar_scrolling_view_behavior"/>
 
 </android.support.design.widget.CoordinatorLayout>

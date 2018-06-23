@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/data_item_layout"
+    android:layout_marginBottom="2dp">
+
+    <ImageView
+        android:id="@+id/data_icon"
+        android:layout_width="20sp"
+        android:layout_height="20sp"
+        app:layout_constraintLeft_toLeftOf="@id/data_item_layout"
+        app:layout_constraintBottom_toBottomOf="@id/data_field"
+        android:src="@drawable/phone_icon"
+        />
+
+    <TextView
+        android:id="@+id/data_field"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintLeft_toRightOf="@id/data_icon"
+        android:layout_marginLeft="10dp"
+        android:text="Field"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        />
+
+    <TextView
+        android:id="@+id/data_value"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintLeft_toRightOf="@id/data_icon"
+        android:layout_marginLeft="130dp"
+        android:text="+0034630681607"
+        android:textSize="16sp"
+        />
+
+
+
+
+
+
+</android.support.constraint.ConstraintLayout>
