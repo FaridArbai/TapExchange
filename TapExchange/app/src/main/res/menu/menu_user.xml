@@ -1,0 +1,25 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="com.faridarbai.tapexchange.MainActivity">
+
+    <item
+        android:id="@+id/action_change_description"
+        android:orderInCategory="100"
+        android:title="Change description"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_change_image"
+        android:orderInCategory="100"
+        android:title="Change image"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_back"
+        android:orderInCategory="100"
+        android:title="Exit profile"
+        app:showAsAction="never" />
+
+
+</menu>

@@ -1,0 +1,54 @@
+<resources>
+    <string name="app_name">TapExchange</string>
+    <string name="action_settings">Settings</string>
+    <string name="title_activity_personal_profile">PersonalProfile</string>
+
+    <string-array name="sections_array">
+        <item>Work</item>
+        <item>Contact</item>
+        <item>Social Media</item>
+        <item>Address</item>
+        <item>Custom</item>
+    </string-array>
+
+    <string-array name="work_section_array">
+        <item>Job Position</item>
+        <item>Company Name</item>
+        <item>Headquarters</item>
+        <item>Employee</item>
+        <item>Other</item>
+    </string-array>
+
+    <string-array name="contact_section_array">
+        <item>Mobile Phone</item>
+        <item>Home Phone</item>
+        <item>Mail</item>
+        <item>Other</item>
+    </string-array>
+
+    <string-array name="social_media_section_array">
+        <item>Facebook</item>
+        <item>LinkedIn</item>
+        <item>Github</item>
+        <item>Twitter</item>
+        <item>Snapchat</item>
+        <item>Instagram</item>
+        <item>Tumblr</item>
+        <item>Youtube</item>
+        <item>Other</item>
+    </string-array>
+
+    <string-array name="address_section_array">
+        <item>Country</item>
+        <item>City</item>
+        <item>ZIP Code</item>
+        <item>Street</item>
+        <item>Number</item>
+        <item>Flat ID</item>
+        <item>Other</item>
+    </string-array>
+
+
+
+
+</resources>
