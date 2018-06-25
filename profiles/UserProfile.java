@@ -108,8 +108,8 @@ public class UserProfile extends PersonalProfile{
 	}
 	
 	private void addSectionSpinnerListener(View view){
-		final Spinner section_spinner = view.findViewById(R.id.section_spinner);
-		final Spinner type_spinner = view.findViewById(R.id.type_spinner);
+		final Spinner section_spinner = (Spinner)view.findViewById(R.id.section_spinner);
+		final Spinner type_spinner = (Spinner)view.findViewById(R.id.type_spinner);
 		
 		section_spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){
 			@Override
@@ -161,7 +161,7 @@ public class UserProfile extends PersonalProfile{
 	}
 	
 	private void addTypeSpinnerListener(View view){
-		final Spinner type_spinner = view.findViewById(R.id.type_spinner);
+		final Spinner type_spinner = (Spinner)view.findViewById(R.id.type_spinner);
 		
 		type_spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){
 			@Override
