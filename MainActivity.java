@@ -1,19 +1,32 @@
 package com.faridarbai.tapexchange;
 
+import android.Manifest;
+import android.app.AlertDialog;
 import android.app.PendingIntent;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.nfc.tech.Ndef;
+import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.text.Html;
+import android.text.method.LinkMovementMethod;
 import android.util.Log;
 import android.view.View;
 import android.view.Menu;
@@ -26,6 +39,7 @@ import android.nfc.NfcAdapter;
 import android.nfc.NfcAdapter.CreateNdefMessageCallback;
 import android.nfc.NfcEvent;
 import android.os.Parcelable;
+import android.widget.TextView;
 
 import com.faridarbai.tapexchange.graphical.ContactsViewAdapter;
 import com.faridarbai.tapexchange.profiles.ContactProfile;
@@ -37,10 +51,17 @@ import com.faridarbai.tapexchange.serialization.UserData;
 import com.faridarbai.tapexchange.users.Person;
 import com.faridarbai.tapexchange.users.User;
 
+import java.io.File;
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity implements CreateNdefMessageCallback{
 	private static final String TAG = "MainActivity";
+	
+	private static final int PERMISSIONS_REQUEST_CODE = 1010;
+	
+	
+	private static final String[] RUNTIME_PERMISSIONS = new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
+																							Manifest.permission.ACCESS_COARSE_LOCATION};
 	
 	NfcAdapter nfc_adapter;
 	PendingIntent pending_nfc_intent;
@@ -50,7 +71,7 @@ public class MainActivity extends AppCompatActivity implements CreateNdefMessage
 	ContactsViewAdapter contacts_adapter;
 	
 	
-	int DEFAULT_RESOURCE_IMAGE = R.drawable.default_avatar;
+	int DEFAULT_RESOURCE_IMAGE = R.drawable.executive;
 	
 	static public String FILES_PATH;
 	
@@ -79,29 +100,106 @@ public class MainActivity extends AppCompatActivity implements CreateNdefMessage
 		
 		this.initConstants();
 		this.checkFirstLaunch();
+		
 		this.initNFC();
+		this.initBluetooth();
+		
 		this.loadUser();
 		
 		this.contacts_adapter = new ContactsViewAdapter(this.user, this);
 		initContactsView();
 	}
 	
+	private BluetoothAdapter mBluetoothAdapter;
+	
+	private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
+    public void onReceive(Context context, Intent intent) {
+        String action = intent.getAction();
+        if (BluetoothDevice.ACTION_FOUND.equals(action)) {
+            BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+            String deviceName = device.getName();
+            String deviceHardwareAddress = device.getAddress();
+	
+			  Log.d(MainActivity.this.TAG, "onReceive: " + deviceName);
+        }
+    }
+	};
+	
+	
+	private void checkRuntimePermissions(){
+		if(Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP){
+			boolean permissions_enabled;
+			
+			if(Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {
+				permissions_enabled = ((this.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) &&
+				(this.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED));
+			}
+			else{
+				permissions_enabled = ((ActivityCompat.checkSelfPermission(this,Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) &&
+				(ActivityCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED));
+			}
+			
+			if(!permissions_enabled){
+				
+				if(Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {
+					this.requestPermissions(MainActivity.RUNTIME_PERMISSIONS, MainActivity.PERMISSIONS_REQUEST_CODE);
+				}
+				else{
+					ActivityCompat.requestPermissions(this, MainActivity.RUNTIME_PERMISSIONS, MainActivity.PERMISSIONS_REQUEST_CODE);
+				}
+			}
+		}
+	}
+	
+	private void initBluetooth(){
+		checkRuntimePermissions();
+		this.mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+		
+		Intent discoverableIntent =
+        new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
+		
+		discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
+		startActivity(discoverableIntent);
+		
+		IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+    	registerReceiver(mReceiver, filter);
+    	
+    	boolean has_started = this.mBluetoothAdapter.startDiscovery();
+    	Log.d(TAG, "initBluetooth: " + has_started);
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	private void loadUser(){
 		this.user = User.load(USER_FILENAME, this);
 	}
 	
+	
 	private void initConstants(){
 		FILES_PATH = getFilesDir().getAbsolutePath();
-		DEFAULT_IMAGE_PATH = FILES_PATH + "default.png";
+		DEFAULT_IMAGE_PATH = FILES_PATH + "/default.png";
 		DEFAULT_USERNAME = "Unknown Name";
-		USER_FILENAME = FILES_PATH + "data.dat";
+		USER_FILENAME = FILES_PATH + "/data.dat";
 	}
 	
 	private void checkFirstLaunch(){
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-    	boolean first_launch = (prefs.getBoolean("firstTime", false)==false);
+		File user_file = new File(USER_FILENAME);
+    	boolean first_launch = (user_file.exists()==false);
 		
-		if (true) {
+		if (first_launch) {
 			// Write default image into files/ and serialize the user file
       	Bitmap default_image = BitmapFactory.decodeResource(this.getResources(), DEFAULT_RESOURCE_IMAGE);
       	
@@ -115,10 +213,13 @@ public class MainActivity extends AppCompatActivity implements CreateNdefMessage
       	
       	new_user.save(USER_FILENAME);
       	
-			SharedPreferences.Editor editor = prefs.edit();
-			editor.putBoolean("firstTime", true);
-			editor.commit();
     	}
+	}
+	
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+		unregisterReceiver(mReceiver);
 	}
 	
 	private void initNFC(){
@@ -209,7 +310,7 @@ public class MainActivity extends AppCompatActivity implements CreateNdefMessage
 	}
 	
 	private void initContactsView(){
-		RecyclerView contacts_view = findViewById(R.id.contacts_view);
+		RecyclerView contacts_view = (RecyclerView) findViewById(R.id.contacts_view);
 		this.contacts_adapter = new ContactsViewAdapter(this.user, this);
 		
 		contacts_view.setAdapter(contacts_adapter);
@@ -263,6 +364,7 @@ public class MainActivity extends AppCompatActivity implements CreateNdefMessage
 		
 		if(requestCode == UserProfile.REQUEST_CODE) {
 			this.user = User.merge(person, this.user);
+			this.user.save(USER_FILENAME);
 		}
 	}
 }
