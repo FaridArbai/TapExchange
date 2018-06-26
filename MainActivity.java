@@ -42,6 +42,7 @@ import android.os.Parcelable;
 import android.widget.TextView;
 
 import com.faridarbai.tapexchange.graphical.ContactsViewAdapter;
+import com.faridarbai.tapexchange.graphical.MeetingActivity;
 import com.faridarbai.tapexchange.profiles.ContactProfile;
 import com.faridarbai.tapexchange.profiles.PersonalProfile;
 import com.faridarbai.tapexchange.profiles.UserProfile;
@@ -57,11 +58,7 @@ import java.util.ArrayList;
 public class MainActivity extends AppCompatActivity implements CreateNdefMessageCallback{
 	private static final String TAG = "MainActivity";
 	
-	private static final int PERMISSIONS_REQUEST_CODE = 1010;
 	
-	
-	private static final String[] RUNTIME_PERMISSIONS = new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
-																							Manifest.permission.ACCESS_COARSE_LOCATION};
 	
 	NfcAdapter nfc_adapter;
 	PendingIntent pending_nfc_intent;
@@ -93,8 +90,7 @@ public class MainActivity extends AppCompatActivity implements CreateNdefMessage
 		fab.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View view) {
-				Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-						.setAction("Action", null).show();
+				MainActivity.this.openMeetingActivity();
 			}
 		});
 		
@@ -102,7 +98,6 @@ public class MainActivity extends AppCompatActivity implements CreateNdefMessage
 		this.checkFirstLaunch();
 		
 		this.initNFC();
-		this.initBluetooth();
 		
 		this.loadUser();
 		
@@ -110,77 +105,11 @@ public class MainActivity extends AppCompatActivity implements CreateNdefMessage
 		initContactsView();
 	}
 	
-	private BluetoothAdapter mBluetoothAdapter;
-	
-	private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
-    public void onReceive(Context context, Intent intent) {
-        String action = intent.getAction();
-        if (BluetoothDevice.ACTION_FOUND.equals(action)) {
-            BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-            String deviceName = device.getName();
-            String deviceHardwareAddress = device.getAddress();
-	
-			  Log.d(MainActivity.this.TAG, "onReceive: " + deviceName);
-        }
-    }
-	};
-	
-	
-	private void checkRuntimePermissions(){
-		if(Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP){
-			boolean permissions_enabled;
-			
-			if(Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {
-				permissions_enabled = ((this.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) &&
-				(this.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED));
-			}
-			else{
-				permissions_enabled = ((ActivityCompat.checkSelfPermission(this,Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) &&
-				(ActivityCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED));
-			}
-			
-			if(!permissions_enabled){
-				
-				if(Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {
-					this.requestPermissions(MainActivity.RUNTIME_PERMISSIONS, MainActivity.PERMISSIONS_REQUEST_CODE);
-				}
-				else{
-					ActivityCompat.requestPermissions(this, MainActivity.RUNTIME_PERMISSIONS, MainActivity.PERMISSIONS_REQUEST_CODE);
-				}
-			}
-		}
+	private void openMeetingActivity(){
+		Intent intent = new Intent(this, MeetingActivity.class);
+		
+		startActivity(intent);
 	}
-	
-	private void initBluetooth(){
-		checkRuntimePermissions();
-		this.mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-		
-		Intent discoverableIntent =
-        new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
-		
-		discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
-		startActivity(discoverableIntent);
-		
-		IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
-    	registerReceiver(mReceiver, filter);
-    	
-    	boolean has_started = this.mBluetoothAdapter.startDiscovery();
-    	Log.d(TAG, "initBluetooth: " + has_started);
-	}
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
 	
 	
 	private void loadUser(){
@@ -214,12 +143,6 @@ public class MainActivity extends AppCompatActivity implements CreateNdefMessage
       	new_user.save(USER_FILENAME);
       	
     	}
-	}
-	
-	@Override
-	protected void onDestroy() {
-		super.onDestroy();
-		unregisterReceiver(mReceiver);
 	}
 	
 	private void initNFC(){
@@ -342,7 +265,6 @@ public class MainActivity extends AppCompatActivity implements CreateNdefMessage
 			
 			return true;
 		}
-		
 		
 		return super.onOptionsItemSelected(item);
 	}
