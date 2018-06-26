@@ -1,2 +1,3 @@
 # TapExchange
-An android app for personal information exchange over NFC
+An android app for personal information exchange over NFC and bluetooth
+
