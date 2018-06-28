@@ -1,4 +1,61 @@
 package com.faridarbai.tapexchange.networking;
 
-public class BluetoothServer {
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothServerSocket;
+import android.bluetooth.BluetoothSocket;
+import android.util.Log;
+
+import com.faridarbai.tapexchange.graphical.MeetingActivity;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.UUID;
+
+public class BluetoothServer implements BluetoothTask {
+	private static final String TAG = "BluetoothServer";
+	private static final String SERVICE_NAME = "TapExchange";
+	public static final int DISCOVERABLE_DURATION = 300;
+	public static final BluetoothTask.Type TYPE = BluetoothTask.Type.SERVER;
+	private final BluetoothAdapter ADAPTER = BluetoothAdapter.getDefaultAdapter();
+	
+	private UUID secret_uuid;
+	private MeetingActivity activity;
+	private byte[] payload;
+	
+	public BluetoothServer(String secret_uuid, byte[] payload, MeetingActivity activity){
+		this.secret_uuid = UUID.fromString(secret_uuid);
+		this.payload = payload;
+		this.activity = activity;
+	}
+	
+	public void start(){
+		Thread thread = new Thread(this);
+		thread.start();
+	}
+	
+	@Override
+	public void run(){
+		Log.d(TAG, "run: SERVER SE EJECUTA");
+		try{
+			BluetoothServerSocket hosting_socket =
+					this.ADAPTER.listenUsingRfcommWithServiceRecord(BluetoothServer.SERVICE_NAME, this.secret_uuid);
+			
+			BluetoothSocket client_socket = hosting_socket.accept();
+			hosting_socket.close();
+			
+			OutputStream to_client = client_socket.getOutputStream();
+			to_client.write(this.payload);
+			to_client.close();
+			
+			this.activity.onSendFinished();
+			
+		}catch(IOException ex){
+			ex.printStackTrace();
+		}
+	}
+	
+	@Override
+	public BluetoothTask.Type getType() {
+		return BluetoothServer.TYPE;
+	}
 }
