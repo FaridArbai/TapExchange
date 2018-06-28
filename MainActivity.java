@@ -1,32 +1,16 @@
 package com.faridarbai.tapexchange;
 
-import android.Manifest;
-import android.app.AlertDialog;
 import android.app.PendingIntent;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.DialogInterface;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.nfc.tech.Ndef;
-import android.os.Build;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
-import android.text.Html;
-import android.text.method.LinkMovementMethod;
 import android.util.Log;
 import android.view.View;
 import android.view.Menu;
@@ -39,34 +23,21 @@ import android.nfc.NfcAdapter;
 import android.nfc.NfcAdapter.CreateNdefMessageCallback;
 import android.nfc.NfcEvent;
 import android.os.Parcelable;
-import android.widget.TextView;
 
 import com.faridarbai.tapexchange.graphical.ContactsViewAdapter;
 import com.faridarbai.tapexchange.graphical.MeetingActivity;
-import com.faridarbai.tapexchange.profiles.ContactProfile;
-import com.faridarbai.tapexchange.profiles.PersonalProfile;
 import com.faridarbai.tapexchange.profiles.UserProfile;
 import com.faridarbai.tapexchange.serialization.PersonData;
 import com.faridarbai.tapexchange.serialization.ProtocolMessage;
-import com.faridarbai.tapexchange.serialization.UserData;
 import com.faridarbai.tapexchange.users.Person;
 import com.faridarbai.tapexchange.users.User;
 
 import java.io.File;
-import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity implements CreateNdefMessageCallback{
+public class MainActivity extends AppCompatActivity{
 	private static final String TAG = "MainActivity";
 	
-	
-	
-	NfcAdapter nfc_adapter;
-	PendingIntent pending_nfc_intent;
-	IntentFilter[] intent_filters_array;
-	String[][] tech_lists_array;
-	
 	ContactsViewAdapter contacts_adapter;
-	
 	
 	int DEFAULT_RESOURCE_IMAGE = R.drawable.executive;
 	
@@ -77,7 +48,11 @@ public class MainActivity extends AppCompatActivity implements CreateNdefMessage
 	String USER_FILENAME;
 	
 	User user;
+	static User public_user;
 	
+	public static User getUser(){
+		return MainActivity.public_user;
+	}
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -97,8 +72,6 @@ public class MainActivity extends AppCompatActivity implements CreateNdefMessage
 		this.initConstants();
 		this.checkFirstLaunch();
 		
-		this.initNFC();
-		
 		this.loadUser();
 		
 		this.contacts_adapter = new ContactsViewAdapter(this.user, this);
@@ -106,16 +79,13 @@ public class MainActivity extends AppCompatActivity implements CreateNdefMessage
 	}
 	
 	private void openMeetingActivity(){
-		Intent intent = new Intent(this, MeetingActivity.class);
-		
-		startActivity(intent);
+		MainActivity.public_user = this.user;
+		this.openActivity(this.user, MeetingActivity.class, MeetingActivity.REQUEST_CODE);
 	}
-	
 	
 	private void loadUser(){
 		this.user = User.load(USER_FILENAME, this);
 	}
-	
 	
 	private void initConstants(){
 		FILES_PATH = getFilesDir().getAbsolutePath();
@@ -145,92 +115,9 @@ public class MainActivity extends AppCompatActivity implements CreateNdefMessage
     	}
 	}
 	
-	private void initNFC(){
-		this.nfc_adapter = NfcAdapter.getDefaultAdapter(this);
-		this.nfc_adapter.setNdefPushMessageCallback(this, this);
-		
-		this.pending_nfc_intent = PendingIntent.getActivity(
-    this, 0, new Intent(this, getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), 0);
-	
-		IntentFilter ndef_filter = new IntentFilter(NfcAdapter.ACTION_NDEF_DISCOVERED);
-		
-		try{
-			ndef_filter.addDataType("*/*");
-		}
-		catch(IntentFilter.MalformedMimeTypeException ex){
-			ex.printStackTrace();
-		}
-		
-		this.intent_filters_array = new IntentFilter[]{ndef_filter};
-		this.tech_lists_array = new String[][]{new String[]{Ndef.class.getName()}};
-	}
 	
 	
-	@Override
-	public NdefMessage createNdefMessage(NfcEvent event){
-		ProtocolMessage pm = new ProtocolMessage((Person)this.user);
-		
-		byte[] payload = pm.toByteArray();
-		String domain = "com.faridarbai";
-		String type = "faridtype";
-		
-		NdefRecord record = NdefRecord.createExternal(domain, type, payload);
-		NdefMessage message = new NdefMessage(record);
-		
-		System.out.printf("Ndef creation method was called\n");
-		
-		return message;
-	}
 	
-	@Override
-	public void onNewIntent(Intent intent){
-		setIntent(intent);
-	}
-	
-	@Override
-	protected void onPause() {
-		super.onPause();
-		
-		this.nfc_adapter.disableForegroundDispatch(this);
-	}
-	
-	@Override
-	public void onResume(){
-		super.onResume();
-		this.nfc_adapter.enableForegroundDispatch(this, this.pending_nfc_intent, this.intent_filters_array,this.tech_lists_array);
-		
-		String received_data_action = NfcAdapter.ACTION_TECH_DISCOVERED;
-		Intent last_intent = getIntent();
-		String last_intent_action;
-		boolean actions_match;
-		
-		if(last_intent!=null) {
-			last_intent_action = last_intent.getAction();
-			actions_match = last_intent_action.equals(received_data_action);
-			
-			if(actions_match) {
-				this.handleReceivedNdef(last_intent);
-				setIntent(null);
-			}
-		}
-	}
-	
-	public void handleReceivedNdef(Intent intent){
-		Parcelable[] raw_messages = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES);
-		NdefMessage ndef_message = (NdefMessage)raw_messages[0];
-		byte[] payload = ndef_message.getRecords()[0].getPayload();
-		Person person = ProtocolMessage.fromByteArray(payload, this);
-		
-		
-		Log.d(TAG, "handleReceivedNdef: THIS ->" + person.getName());
-		
-		this.user.getContacts().add(person);
-		
-		int n_contacts = this.user.getContacts().size();
-		
-		this.contacts_adapter.notifyItemInserted(n_contacts-1);
-		
-	}
 	
 	private void initContactsView(){
 		RecyclerView contacts_view = (RecyclerView) findViewById(R.id.contacts_view);
@@ -256,7 +143,7 @@ public class MainActivity extends AppCompatActivity implements CreateNdefMessage
 		
 		//noinspection SimplifiableIfStatement
 		if (id == R.id.action_profile) {
-			this.openProfile(this.user, UserProfile.class, UserProfile.REQUEST_CODE);
+			this.openActivity(this.user, UserProfile.class, UserProfile.REQUEST_CODE);
 			
 			return true;
 		}
@@ -269,8 +156,8 @@ public class MainActivity extends AppCompatActivity implements CreateNdefMessage
 		return super.onOptionsItemSelected(item);
 	}
 	
-	public void openProfile(Person person, Class profile_class, int request_code){
-		Intent intent = new Intent(this, profile_class);
+	public void openActivity(Person person, Class activity_class, int request_code){
+		Intent intent = new Intent(this, activity_class);
 		
 		PersonData person_data = person.serialize();
 		intent.putExtra("PersonData", person_data);
@@ -284,10 +171,27 @@ public class MainActivity extends AppCompatActivity implements CreateNdefMessage
 		PersonData person_data = (PersonData)data.getExtras().getSerializable("PersonData");
 		Person person = new Person(person_data,this);
 		
-		if(requestCode == UserProfile.REQUEST_CODE) {
-			this.user = User.merge(person, this.user);
-			this.user.save(USER_FILENAME);
+		switch(requestCode){
+			case(UserProfile.REQUEST_CODE):{
+				this.user = User.merge(person, this.user);
+				this.user.save(USER_FILENAME);
+				break;
+			}
+			case(MeetingActivity.REQUEST_CODE):{
+				
+				/**
+					this.user.getContacts().add(person);
+					int n_contacts = this.user.getContacts().size();
+					this.contacts_adapter.notifyItemInserted(n_contacts-1);
+				**/
+				break;
+			}
+			default:{
+				
+				break;
+			}
 		}
+		
 	}
 }
 
