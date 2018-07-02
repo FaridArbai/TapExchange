@@ -1,10 +1,7 @@
 package com.faridarbai.tapexchange;
 
-import android.app.PendingIntent;
-import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.nfc.tech.Ndef;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
@@ -17,18 +14,11 @@ import android.view.Menu;
 import android.view.MenuItem;
 
 import android.content.Intent;
-import android.nfc.NdefMessage;
-import android.nfc.NdefRecord;
-import android.nfc.NfcAdapter;
-import android.nfc.NfcAdapter.CreateNdefMessageCallback;
-import android.nfc.NfcEvent;
-import android.os.Parcelable;
 
 import com.faridarbai.tapexchange.graphical.ContactsViewAdapter;
-import com.faridarbai.tapexchange.graphical.MeetingActivity;
 import com.faridarbai.tapexchange.profiles.UserProfile;
 import com.faridarbai.tapexchange.serialization.PersonData;
-import com.faridarbai.tapexchange.serialization.ProtocolMessage;
+import com.faridarbai.tapexchange.serialization.UserData;
 import com.faridarbai.tapexchange.users.Person;
 import com.faridarbai.tapexchange.users.User;
 
@@ -47,12 +37,7 @@ public class MainActivity extends AppCompatActivity{
 	String DEFAULT_USERNAME;
 	String USER_FILENAME;
 	
-	User user;
-	static User public_user;
-	
-	public static User getUser(){
-		return MainActivity.public_user;
-	}
+	private User user;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -79,7 +64,7 @@ public class MainActivity extends AppCompatActivity{
 	}
 	
 	private void openMeetingActivity(){
-		MainActivity.public_user = this.user;
+		MeetingActivity.setCalledFromMain(true);
 		this.openActivity(this.user, MeetingActivity.class, MeetingActivity.REQUEST_CODE);
 	}
 	
@@ -143,7 +128,8 @@ public class MainActivity extends AppCompatActivity{
 		
 		//noinspection SimplifiableIfStatement
 		if (id == R.id.action_profile) {
-			this.openActivity(this.user, UserProfile.class, UserProfile.REQUEST_CODE);
+			Person user_person = (Person)this.user;
+			this.openActivity(user_person, UserProfile.class, UserProfile.REQUEST_CODE);
 			
 			return true;
 		}
@@ -161,6 +147,14 @@ public class MainActivity extends AppCompatActivity{
 		
 		PersonData person_data = person.serialize();
 		intent.putExtra("PersonData", person_data);
+		startActivityForResult(intent, request_code);
+	}
+	
+	public void openActivity(User user, Class activity_class, int request_code){
+		Intent intent = new Intent(this, activity_class);
+		
+		UserData user_data = user.serialize();
+		intent.putExtra("UserData", user_data);
 		startActivityForResult(intent, request_code);
 	}
 	
