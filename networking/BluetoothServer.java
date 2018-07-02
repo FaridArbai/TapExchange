@@ -5,7 +5,7 @@ import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.util.Log;
 
-import com.faridarbai.tapexchange.graphical.MeetingActivity;
+import com.faridarbai.tapexchange.MeetingActivity;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -35,17 +35,21 @@ public class BluetoothServer implements BluetoothTask {
 	
 	@Override
 	public void run(){
-		Log.d(TAG, "run: SERVER SE EJECUTA");
 		try{
 			BluetoothServerSocket hosting_socket =
 					this.ADAPTER.listenUsingRfcommWithServiceRecord(BluetoothServer.SERVICE_NAME, this.secret_uuid);
 			
+			
+			Log.d(TAG, "run: SERVER EMPIEZA A ESCUCHAR");
 			BluetoothSocket client_socket = hosting_socket.accept();
+			Log.d(TAG, "run: SERVER RECIBE CONEXION");
+			
 			hosting_socket.close();
 			
 			OutputStream to_client = client_socket.getOutputStream();
 			to_client.write(this.payload);
 			to_client.close();
+			Log.d(TAG, "run: SERVER TERMINA CONEXION");
 			
 			this.activity.onSendFinished();
 			
