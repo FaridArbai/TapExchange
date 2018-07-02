@@ -2,7 +2,6 @@ package com.faridarbai.tapexchange.networking;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -11,13 +10,10 @@ import android.content.IntentFilter;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.faridarbai.tapexchange.graphical.MeetingActivity;
-import com.faridarbai.tapexchange.serialization.ProtocolMessage;
-import com.faridarbai.tapexchange.users.Person;
+import com.faridarbai.tapexchange.MeetingActivity;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.UUID;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -46,6 +42,10 @@ public class BluetoothClient implements BluetoothTask{
 		this.PAYLOAD_LENGTH = server_descriptor.getPayloadLength();
 		this.activity = activity;
 		this.server_found = false;
+		
+		String log_str = String.format("READY TO READ %d BYTES FROM %s", this.PAYLOAD_LENGTH, this.SERVER_NAME);
+		
+		Log.d(TAG, "run : " + log_str);
 	}
 	
 	
@@ -70,13 +70,14 @@ public class BluetoothClient implements BluetoothTask{
 					this.server_found = true;
 					this.ADAPTER.cancelDiscovery();
 					this.DISCOVERY_LOCK.lock();
-					this.DISCOVERY_CONDITION.signal();
+					this.DISCOVERY_CONDITION.signalAll();
+					Log.d(TAG, "handleBluetoothActions: DISCOVERER SIGNALS THREAD");
 					this.DISCOVERY_LOCK.unlock();
 				}
 				
 				String log_str = String.format("DISCOVERED NEW DEVICE : %s:%s", device_name, device_mac);
 				Toast.makeText(activity, log_str, Toast.LENGTH_SHORT).show();
-				Log.d(BluetoothClient.this.TAG, "onReceive: " + log_str);
+				Log.d(BluetoothClient.this.TAG, "handleBluetoothActions : " + log_str);
 				
 				break;
 			}
@@ -134,11 +135,29 @@ public class BluetoothClient implements BluetoothTask{
 		try{
 			this.DISCOVERY_LOCK.lock();
 			this.DISCOVERY_CONDITION.await();
+			Log.d(TAG, "run: THREAD HAS BEEN SIGNALED");
 			
 			BluetoothSocket server_socket = this.server_device.createRfcommSocketToServiceRecord(this.secret_uuid);
+			server_socket.connect();
 			InputStream from_server = server_socket.getInputStream();
+			Log.d(TAG, "run: OBTAINED INPUT STREAM : " + from_server);
+			
 			byte[] payload = new byte[this.PAYLOAD_LENGTH];
-			int read_bytes = from_server.read(payload);
+			
+			Log.d(TAG, "run: CLIENTE EMPIEZA A LEER");
+			
+			int read_bytes = 0;
+			int max_bytes = this.PAYLOAD_LENGTH - read_bytes;
+			
+			while(read_bytes!=this.PAYLOAD_LENGTH) {
+				read_bytes += from_server.read(payload, read_bytes, max_bytes);
+				max_bytes = this.PAYLOAD_LENGTH - read_bytes;
+				
+				Log.d(TAG, String.format("run: CLIENTE ACABA DE LEER %d BYTES", read_bytes));
+			}
+			
+				
+				Log.d(TAG, String.format("run: CLIENTE TERMINA DE LEER %d BYTES", read_bytes));
 			
 			activity.onReceiveFinished(payload);
 			
