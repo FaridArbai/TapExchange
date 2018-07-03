@@ -43,7 +43,7 @@ public class BluetoothClient implements BluetoothTask{
 		this.activity = activity;
 		this.server_found = false;
 		
-		String log_str = String.format("READY TO READ %d BYTES FROM %s", this.PAYLOAD_LENGTH, this.SERVER_NAME);
+		String log_str = String.format("READY TO READ %d BYTES FROM %s\n[UUID: %s]", this.PAYLOAD_LENGTH, this.SERVER_NAME, secret_uuid_str);
 		
 		Log.d(TAG, "run : " + log_str);
 	}
@@ -135,11 +135,27 @@ public class BluetoothClient implements BluetoothTask{
 		try{
 			this.DISCOVERY_LOCK.lock();
 			this.DISCOVERY_CONDITION.await();
-			Log.d(TAG, "run: THREAD HAS BEEN SIGNALED");
+			this.activity.onContactsDeviceFound();
 			
+			Log.d(TAG, "run: CLIENTE HA SIDO NOTIFICADO");
 			BluetoothSocket server_socket = this.server_device.createRfcommSocketToServiceRecord(this.secret_uuid);
-			server_socket.connect();
+			
+			Log.d(TAG, String.format("run: CLIENTE SE CONECTA AL SERVICIO %s:%s", this.server_device.getAddress(),this.secret_uuid.toString()));
+			
+			boolean connection_error;
+			
+			do {
+				connection_error = false;
+				try {
+					server_socket.connect();
+				} catch (IOException ex) {
+					Log.d(TAG, "run: ERROR CONNECTING");
+					connection_error = true;
+				}
+			}while(connection_error);
+			
 			InputStream from_server = server_socket.getInputStream();
+			
 			Log.d(TAG, "run: OBTAINED INPUT STREAM : " + from_server);
 			
 			byte[] payload = new byte[this.PAYLOAD_LENGTH];
@@ -148,16 +164,20 @@ public class BluetoothClient implements BluetoothTask{
 			
 			int read_bytes = 0;
 			int max_bytes = this.PAYLOAD_LENGTH - read_bytes;
+			float percentage;
 			
 			while(read_bytes!=this.PAYLOAD_LENGTH) {
 				read_bytes += from_server.read(payload, read_bytes, max_bytes);
 				max_bytes = this.PAYLOAD_LENGTH - read_bytes;
 				
+				percentage = (((float)read_bytes)/this.PAYLOAD_LENGTH);
+				
+				this.activity.incrementProgressBy(percentage);
+				
 				Log.d(TAG, String.format("run: CLIENTE ACABA DE LEER %d BYTES", read_bytes));
 			}
 			
-				
-				Log.d(TAG, String.format("run: CLIENTE TERMINA DE LEER %d BYTES", read_bytes));
+			Log.d(TAG, String.format("run: CLIENTE TERMINA DE LEER %d BYTES", read_bytes));
 			
 			activity.onReceiveFinished(payload);
 			
