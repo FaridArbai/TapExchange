@@ -64,7 +64,6 @@ public class MainActivity extends AppCompatActivity{
 	}
 	
 	private void openMeetingActivity(){
-		MeetingActivity.setCalledFromMain(true);
 		this.openActivity(this.user, MeetingActivity.class, MeetingActivity.REQUEST_CODE);
 	}
 	
