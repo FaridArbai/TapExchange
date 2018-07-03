@@ -14,7 +14,7 @@ import java.util.UUID;
 public class BluetoothServer implements BluetoothTask {
 	private static final String TAG = "BluetoothServer";
 	private static final String SERVICE_NAME = "TapExchange";
-	public static final int DISCOVERABLE_DURATION = 300;
+	public static final int DISCOVERABLE_DURATION = 10;
 	public static final BluetoothTask.Type TYPE = BluetoothTask.Type.SERVER;
 	private final BluetoothAdapter ADAPTER = BluetoothAdapter.getDefaultAdapter();
 	
@@ -37,10 +37,10 @@ public class BluetoothServer implements BluetoothTask {
 	public void run(){
 		try{
 			BluetoothServerSocket hosting_socket =
-					this.ADAPTER.listenUsingRfcommWithServiceRecord(BluetoothServer.SERVICE_NAME, this.secret_uuid);
+					this.ADAPTER.listenUsingRfcommWithServiceRecord(this.secret_uuid.toString(), this.secret_uuid);
 			
 			
-			Log.d(TAG, "run: SERVER EMPIEZA A ESCUCHAR");
+			Log.d(TAG, String.format("run: SERVER EMPIEZA A ESCUCHAR PARA EL UUID %s", secret_uuid.toString()));
 			BluetoothSocket client_socket = hosting_socket.accept();
 			Log.d(TAG, "run: SERVER RECIBE CONEXION");
 			
@@ -48,7 +48,7 @@ public class BluetoothServer implements BluetoothTask {
 			
 			OutputStream to_client = client_socket.getOutputStream();
 			to_client.write(this.payload);
-			to_client.close();
+			
 			Log.d(TAG, "run: SERVER TERMINA CONEXION");
 			
 			this.activity.onSendFinished();
