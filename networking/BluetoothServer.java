@@ -35,26 +35,83 @@ public class BluetoothServer implements BluetoothTask {
 	
 	@Override
 	public void run(){
-		try{
-			BluetoothServerSocket hosting_socket =
-					this.ADAPTER.listenUsingRfcommWithServiceRecord(this.secret_uuid.toString(), this.secret_uuid);
-			
-			
-			Log.d(TAG, String.format("run: SERVER EMPIEZA A ESCUCHAR PARA EL UUID %s", secret_uuid.toString()));
-			BluetoothSocket client_socket = hosting_socket.accept();
-			Log.d(TAG, "run: SERVER RECIBE CONEXION");
-			
-			hosting_socket.close();
-			
-			OutputStream to_client = client_socket.getOutputStream();
-			to_client.write(this.payload);
-			
-			Log.d(TAG, "run: SERVER TERMINA CONEXION");
-			
-			this.activity.onSendFinished();
-			
+		boolean important_error = false;
+		boolean error;
+		String error_message = null;
+		
+		BluetoothServerSocket hosting_socket = null;
+		boolean hosting_created;
+		
+		try {
+			hosting_socket = this.ADAPTER.listenUsingRfcommWithServiceRecord(this.secret_uuid.toString(), this.secret_uuid);
+			hosting_created = true;
 		}catch(IOException ex){
+			hosting_created = false;
 			ex.printStackTrace();
+		}
+		
+		if(!hosting_created){
+			important_error = true;
+			error = true;
+			error_message = "Bluetooth connection could not be opened\n\n. Please check your bluetooth status.";
+		}
+		else {
+			boolean socket_created;
+			BluetoothSocket client_socket = null;
+			
+			try {
+				client_socket = hosting_socket.accept();
+				hosting_socket.close();
+				socket_created = true;
+			}catch(IOException ex){
+				socket_created = false;
+				ex.printStackTrace();
+			}
+			
+			if(!socket_created){
+				error = true;
+				error_message = "Bluetooth connection could not be accepted.\n\n" +
+						"Please check your bluetooth status.";
+			}
+			else{
+				OutputStream to_client = null;
+				boolean stream_created;
+				
+				try {
+					to_client = client_socket.getOutputStream();
+					stream_created = true;
+				}catch(IOException ex){
+					stream_created = false;
+					ex.printStackTrace();
+				}
+				
+				if(!stream_created){
+					error = true;
+					error_message = "Bluetooth output stream could not be created.\n\n" +
+						"Please check your bluetooth status.";
+				}
+				else{
+					boolean payload_sent;
+					
+					try {
+						to_client.write(this.payload);
+						payload_sent = true;
+					}catch(IOException ex){
+						payload_sent = false;
+						ex.printStackTrace();
+					}
+					
+					if(!payload_sent){
+						error = true;
+						error_message = "Transfer was interrupted.\n\n" +
+								"Please check your bluetooth status.";
+					}
+				}
+			}
+		}
+		
+		if(important_error){
+			this.activity.onConnectionError(error_message);
 		}
 	}
 	
