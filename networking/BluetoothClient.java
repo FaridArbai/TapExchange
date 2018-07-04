@@ -15,6 +15,7 @@ import com.faridarbai.tapexchange.MeetingActivity;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -22,6 +23,14 @@ import java.util.concurrent.locks.ReentrantLock;
 public class BluetoothClient implements BluetoothTask{
 	private static final String TAG = "BluetoothClient";
 	public static final BluetoothTask.Type TYPE = BluetoothTask.Type.CLIENT;
+	
+	private static final int MAX_CONNECTION_RETRIES = 3;
+	private static final int RETRY_IDLE_TIME = 1000;
+	
+	private static final int DISCOVERY_TIMEOUT = 20000;
+	
+	
+	
 	private final BluetoothAdapter ADAPTER = BluetoothAdapter.getDefaultAdapter();
 	private final Lock DISCOVERY_LOCK = new ReentrantLock();
 	private final Condition DISCOVERY_CONDITION = DISCOVERY_LOCK.newCondition();
@@ -128,69 +137,130 @@ public class BluetoothClient implements BluetoothTask{
 	
 	@Override
 	public void run() {
-		Log.d(TAG, "run: CLIENTE SE EJECUTA");
+		boolean error = false;
+		String error_message = null;
+		byte[] payload = new byte[this.PAYLOAD_LENGTH];
+		
 		setupDiscoveryReceiver();
 		this.ADAPTER.startDiscovery();
 		
-		try{
-			this.DISCOVERY_LOCK.lock();
-			this.DISCOVERY_CONDITION.await();
+		this.DISCOVERY_LOCK.lock();
+		try {
+			this.DISCOVERY_CONDITION.await(this.DISCOVERY_TIMEOUT, TimeUnit.MILLISECONDS);
+		}catch(InterruptedException ex){
+			ex.printStackTrace();
+		}
+		
+		if(!this.server_found){
+			error = true;
+			error_message = "The contact has either refused discoverability or accepted too late.\n\n" +
+					"Please try again.";
+		}
+		else {
 			this.activity.onContactsDeviceFound();
+			BluetoothSocket server_socket = null;
+			boolean socket_created;
 			
-			Log.d(TAG, "run: CLIENTE HA SIDO NOTIFICADO");
-			BluetoothSocket server_socket = this.server_device.createRfcommSocketToServiceRecord(this.secret_uuid);
-			
-			Log.d(TAG, String.format("run: CLIENTE SE CONECTA AL SERVICIO %s:%s", this.server_device.getAddress(),this.secret_uuid.toString()));
-			
-			boolean connection_error;
-			
-			do {
-				connection_error = false;
-				try {
-					server_socket.connect();
-				} catch (IOException ex) {
-					Log.d(TAG, "run: ERROR CONNECTING");
-					connection_error = true;
-				}
-			}while(connection_error);
-			
-			InputStream from_server = server_socket.getInputStream();
-			
-			Log.d(TAG, "run: OBTAINED INPUT STREAM : " + from_server);
-			
-			byte[] payload = new byte[this.PAYLOAD_LENGTH];
-			
-			Log.d(TAG, "run: CLIENTE EMPIEZA A LEER");
-			
-			int read_bytes = 0;
-			int max_bytes = this.PAYLOAD_LENGTH - read_bytes;
-			float percentage;
-			
-			while(read_bytes!=this.PAYLOAD_LENGTH) {
-				read_bytes += from_server.read(payload, read_bytes, max_bytes);
-				max_bytes = this.PAYLOAD_LENGTH - read_bytes;
-				
-				percentage = (((float)read_bytes)/this.PAYLOAD_LENGTH);
-				
-				this.activity.incrementProgressBy(percentage);
-				
-				Log.d(TAG, String.format("run: CLIENTE ACABA DE LEER %d BYTES", read_bytes));
+			try {
+				server_socket = this.server_device.createRfcommSocketToServiceRecord(this.secret_uuid);
+				socket_created = true;
+			} catch (IOException ex) {
+				socket_created = false;
 			}
 			
-			Log.d(TAG, String.format("run: CLIENTE TERMINA DE LEER %d BYTES", read_bytes));
-			
+			if (!socket_created) {
+				error = true;
+				error_message = "Couldn't create a bluetooth connection, please try again.\n\n" +
+						"If the problem persists check your bluetooth status.";
+			}
+			else {
+				boolean connection_error = false;
+				int n_retries = 0;
+				boolean max_retries_reached = false;
+				
+				do {
+					connection_error = false;
+					try {
+						server_socket.connect();
+					} catch (IOException ex) {
+						connection_error = true;
+						n_retries++;
+						try {
+							Thread.sleep(BluetoothClient.RETRY_IDLE_TIME);
+						}catch(InterruptedException ex2){
+							ex2.printStackTrace();
+						}
+					}
+					max_retries_reached = (n_retries == BluetoothClient.MAX_CONNECTION_RETRIES);
+				} while (connection_error & (!max_retries_reached));
+				
+				if (max_retries_reached) {
+					error = true;
+					error_message = "Reached maximum number of connection attempts, please try again.\n\n" +
+							"If the problem persists your contact should check his bluetooth status.";
+				}
+				else{
+					InputStream from_server = null;
+					boolean stream_created;
+					try {
+						from_server = server_socket.getInputStream();
+						stream_created = true;
+					}catch(IOException ex){
+						stream_created = false;
+						ex.printStackTrace();
+					}
+					
+					if(!stream_created){
+						error = true;
+						error_message = "Unable to create Bluetooth InputStream, please try again.\n\n" +
+								"If the problem persists you should check both your bluetooth status " +
+								"and your contact's bluetooth status";
+					}
+					else {
+						int read_bytes = 0;
+						int max_bytes = this.PAYLOAD_LENGTH - read_bytes;
+						float percentage;
+						
+						boolean finished_reading = false;
+						boolean read_error = false;
+						
+						while ((!finished_reading) && (!read_error)) {
+							try {
+								read_bytes += from_server.read(payload, read_bytes, max_bytes);
+								max_bytes = this.PAYLOAD_LENGTH - read_bytes;
+								
+								percentage = (((float) read_bytes) / this.PAYLOAD_LENGTH);
+								
+								this.activity.setProgressTo(percentage, read_bytes, this.PAYLOAD_LENGTH);
+								
+								finished_reading = (read_bytes == this.PAYLOAD_LENGTH);
+							} catch (IOException ex) {
+								read_error = true;
+							}
+						}
+						
+						if (read_error) {
+							error = true;
+							error_message = "Bluetooth connection was closed during the transfer, please try again.\n\n" +
+									"If the problem persists, both of you should make sure that bluetooth is running up during " +
+									"the transfer.";
+						} else {
+							error = false;
+						}
+					}
+				}
+			}
+		}
+		
+		if(error){
+			this.activity.onConnectionError(error_message);
+		}
+		else{
 			activity.onReceiveFinished(payload);
-			
-		}catch(IOException ex){
-			ex.printStackTrace();
 		}
-		catch(InterruptedException ex){
-			ex.printStackTrace();
-		}
-		finally {
-			this.DISCOVERY_LOCK.unlock();
-			this.activity.unregisterReceiver(this.discovery_receiver);
-		}
+		
+		this.DISCOVERY_LOCK.unlock();
+		this.activity.unregisterReceiver(this.discovery_receiver);
 	}
 	
 	@Override
