@@ -1,12 +1,16 @@
 package com.faridarbai.tapexchange;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
@@ -18,10 +22,13 @@ import android.nfc.tech.NfcF;
 import android.nfc.tech.NfcV;
 import android.os.Build;
 import android.os.Parcelable;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.faridarbai.tapexchange.networking.BluetoothClient;
@@ -33,12 +40,21 @@ import com.faridarbai.tapexchange.serialization.UserData;
 import com.faridarbai.tapexchange.users.Person;
 import com.faridarbai.tapexchange.users.User;
 
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
+
+import de.hdodenhof.circleimageview.CircleImageView;
+
 public class MeetingActivity extends AppCompatActivity implements NfcAdapter.CreateNdefMessageCallback {
 	private static final String TAG = "MeetingActivity";
 	public static final int REQUEST_CODE = 1012;
-	private static final int PERMISSIONS_REQUEST_CODE = 1013;
-	private static final int DISCOVERABLE_REQUEST_CODE = 1014;
-	private static final String[] RUNTIME_PERMISSIONS = new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
+	private static final int PERMISSIONS_REQUEST_CODE 			= 1013;
+	private static final int DISCOVERABLE_REQUEST_CODE 		= 1014;
+	private static final int BLUETOOTH_ENABLE_REQUEST_CODE	= 1015;
+	
+	
+	private static final String[] RUNTIME_PERMISSIONS = new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
+			Manifest.permission.ACCESS_COARSE_LOCATION};
 	
 	private BluetoothServer server;
 	private BluetoothClient client;
@@ -48,6 +64,8 @@ public class MeetingActivity extends AppCompatActivity implements NfcAdapter.Cre
 	private byte[] user_payload;
 	
 	private User user;
+	
+	private BluetoothAdapter bluetooth_adapter;
 	
 	private NfcAdapter nfc_adapter;
 	private PendingIntent pending_nfc_intent;
@@ -61,11 +79,24 @@ public class MeetingActivity extends AppCompatActivity implements NfcAdapter.Cre
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.meeting_activity);
 		
-		Log.d(TAG, "onCreate: CREATED");
+		this.getUserPayloadFromIntent();
 		
 		this.initNFC();
-		this.getUserPayloadFromIntent();
-		this.requestBluetoothPermissions();
+		
+		this.initBluetooth();
+		this.requestLocationPermissions();
+		this.enableBluetooth();
+	}
+	
+	private void initBluetooth(){
+		this.bluetooth_adapter = BluetoothAdapter.getDefaultAdapter();
+	}
+	
+	private void enableBluetooth(){
+		if(!this.bluetooth_adapter.isEnabled()){
+			Intent intent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+			startActivityForResult(intent, MeetingActivity.BLUETOOTH_ENABLE_REQUEST_CODE);
+		}
 	}
 	
 	private void initNFC(){
@@ -186,13 +217,14 @@ public class MeetingActivity extends AppCompatActivity implements NfcAdapter.Cre
 		this.client.start();
 		
 		this.progress_dialog = new ProgressDialog(this);
-		this.progress_dialog.setMessage("Scanning for new contact's device");
+		this.progress_dialog.setTitle("Scanning");
+		this.progress_dialog.setIcon(R.drawable.bluetooth_scan_icon);
+		this.progress_dialog.setMessage("Searching device");
 		this.progress_dialog.setCanceledOnTouchOutside(false);
 		this.progress_dialog.setCancelable(false);
 		
 		this.progress_dialog.show();
 	}
-	
 	
 	public void onContactsDeviceFound(){
 		this.runOnUiThread(new Runnable() {
@@ -201,24 +233,60 @@ public class MeetingActivity extends AppCompatActivity implements NfcAdapter.Cre
 				MeetingActivity.this.progress_dialog.dismiss();
 		
 				MeetingActivity.this.progress_dialog = new ProgressDialog(MeetingActivity.this);
-				MeetingActivity.this.progress_dialog.setMessage("Downloading contact information");
+				MeetingActivity.this.progress_dialog.setTitle("Downloading");
+				MeetingActivity.this.progress_dialog.setIcon(R.drawable.bluetooth_download_icon);
+				MeetingActivity.this.progress_dialog.setMessage("\nLoading contact information");
 				MeetingActivity.this.progress_dialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
 				MeetingActivity.this.progress_dialog.setMax(100);
+				MeetingActivity.this.progress_dialog.setCanceledOnTouchOutside(false);
+				MeetingActivity.this.progress_dialog.setCancelable(false);
 				
 				MeetingActivity.this.progress_dialog.show();
 			}
 		});
 	}
 	
-	public void incrementProgressBy(float percentage){
+	public void setProgressTo(float percentage, final int downloaded, final int total_size){
 		final int percentage_100 = (int)(percentage*100.0);
 		
 		this.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
 				MeetingActivity.this.progress_dialog.setProgress(percentage_100);
+				String number_format = String.format("%s / %s", bytesToString(downloaded), bytesToString(total_size));
+				MeetingActivity.this.progress_dialog.setProgressNumberFormat(number_format);
 			}
 		});
+	}
+	
+	public static final double SPACE_KB = 1024;
+	public static final double SPACE_MB = 1024 * SPACE_KB;
+	public static final double SPACE_GB = 1024 * SPACE_MB;
+	public static final double SPACE_TB = 1024 * SPACE_GB;
+	
+	private String bytesToString(int bytes){
+		NumberFormat nf = new DecimalFormat();
+		String format;
+		
+		nf.setMaximumFractionDigits(2);
+		
+		try {
+			if ( bytes < SPACE_KB ) {
+				format =  nf.format(bytes) + " Byte(s)";
+			} else if ( bytes < SPACE_MB ) {
+				format =  nf.format(bytes/SPACE_KB) + " KB";
+			} else if ( bytes < SPACE_GB ) {
+				format = nf.format(bytes/SPACE_MB) + " MB";
+			} else if ( bytes < SPACE_TB ) {
+				format = nf.format(bytes/SPACE_GB) + " GB";
+			} else {
+				format = nf.format(bytes/SPACE_TB) + " TB";
+			} 
+		} catch (Exception e) {
+			format = String.format("%d B", bytes);
+		}
+		
+		return format;
 	}
 	
 	protected void getUserPayloadFromIntent(){
@@ -240,7 +308,7 @@ public class MeetingActivity extends AppCompatActivity implements NfcAdapter.Cre
 	protected void closeActivity(){
 		Intent result_intent = new Intent();
 		result_intent.putExtra("PersonData", this.user.serialize());
-		setResult(1, result_intent);
+		setResult(RESULT_OK, result_intent);
 		
 		finish();
 	}
@@ -253,45 +321,68 @@ public class MeetingActivity extends AppCompatActivity implements NfcAdapter.Cre
 	
 	
 	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	public void onSendFinished(){
-		String log_str = "SEND HAS FINISHED";
-		
-		Log.d(TAG, "onSendFinished: " + log_str);
-	}
-	
 	public void onReceiveFinished(byte[] payload){
-		Person new_contact = ProtocolMessage.fromByteArray(payload, this);
+		final Person new_contact = ProtocolMessage.fromByteArray(payload, this);
 		this.user.addContact(new_contact);
 		
 		this.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
 				MeetingActivity.this.progress_dialog.dismiss();
+				MeetingActivity.this.showNewContactDialog(new_contact);
 			}
 		});
 		
 		Log.d(TAG, "onReceiveFinished: FINISHED ALL SENDING");
 	}
+	
+	public void showNewContactDialog(Person new_contact){
+		AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		View dialog_view = this.getLayoutInflater().inflate(R.layout.new_contact_dialog, null);
+		
+		final CircleImageView contact_image_view = dialog_view.findViewById(R.id.new_contact_image);
+		final TextView contact_username = dialog_view.findViewById(R.id.new_contact_username);
+		final TextView contact_job = dialog_view.findViewById(R.id.new_contact_job);
+		final TextView contact_location = dialog_view.findViewById(R.id.new_contact_location);
+		
+		String image_path = new_contact.getImagePath();
+		Bitmap contact_image = BitmapFactory.decodeFile(image_path);
+		contact_image_view.setImageBitmap(contact_image);
+		
+		builder.setView(dialog_view);
+		final AlertDialog dialog = builder.create();
+		
+		dialog.setCanceledOnTouchOutside(false);
+		
+		dialog.show();
+	}
+	
+	public void onConnectionError(final String error_message){
+		this.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				final AlertDialog.Builder builder = new AlertDialog.Builder(MeetingActivity.this);
+			
+				builder.setIcon(R.drawable.error_icon);
+				builder.setTitle("Connection error");
+				builder.setMessage(error_message);
+				builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+					}
+				});
+				
+				if(MeetingActivity.this.progress_dialog!=null) {
+					if (MeetingActivity.this.progress_dialog.isShowing()) {
+						MeetingActivity.this.progress_dialog.dismiss();
+					}
+				}
+				
+				builder.show();
+			}
+		});
+	}
+	
 	
 	private void requestDiscoverability(){
 		Intent discoverableIntent =
@@ -302,8 +393,8 @@ public class MeetingActivity extends AppCompatActivity implements NfcAdapter.Cre
 	}
 	
 	
-	private void requestBluetoothPermissions(){
-		if(Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP){
+	private void requestLocationPermissions(){
+		if(true){
 			boolean permissions_enabled;
 			
 			if(Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {
@@ -316,7 +407,6 @@ public class MeetingActivity extends AppCompatActivity implements NfcAdapter.Cre
 			}
 			
 			if(!permissions_enabled){
-				
 				if(Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {
 					this.requestPermissions(MeetingActivity.RUNTIME_PERMISSIONS, MeetingActivity.PERMISSIONS_REQUEST_CODE);
 				}
@@ -327,16 +417,103 @@ public class MeetingActivity extends AppCompatActivity implements NfcAdapter.Cre
 		}
 	}
 	
+	private void onUserCancelledBluetooth(){
+		final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		String message = "Bluetooth must be set in order to exchange contact information.";
+		
+		builder.setIcon(R.drawable.bluetooth_cancel_icon);
+		builder.setTitle("Settings error");
+		builder.setMessage(message);
+		builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				MeetingActivity.this.enableBluetooth();
+			}
+		});
+		
+		builder.setNegativeButton("EXIT", new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				MeetingActivity.this.closeActivity();
+			}
+		});
+		
+		AlertDialog dialog = builder.create();
+		dialog.setCanceledOnTouchOutside(false);
+		dialog.show();
+	}
+	
+	private void onUserCancelledLocation(){
+		final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		String message = "Location must be enabled to register the meeting place.";
+		
+		builder.setIcon(R.drawable.location_cancel_icon);
+		builder.setTitle("Settings error");
+		builder.setMessage(message);
+		builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				MeetingActivity.this.requestLocationPermissions();
+			}
+		});
+		
+		builder.setNegativeButton("EXIT", new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				MeetingActivity.this.closeActivity();
+			}
+		});
+		
+		AlertDialog dialog = builder.create();
+		dialog.setCanceledOnTouchOutside(false);
+		dialog.show();
+	}
+	
+	private void onUserCancelledDiscoverability(){
+		final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		String message = "Discoverability must be set for the bluetooth transfer to take place.\n\n" +
+				"Note: When enabling discoverability your device will be visible to other local devices " +
+				"for 10 seconds. Even though, only the device you have tapped will be able to download " +
+				"your contact profile since secret connection information has been exchanged during the NFC tap.";
+		
+		builder.setIcon(R.drawable.bluetooth_cancel_icon);
+		builder.setTitle("Settings error");
+		builder.setMessage(message);
+		builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				MeetingActivity.this.requestDiscoverability();
+			}
+		});
+		
+		builder.setNegativeButton("EXIT", new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				MeetingActivity.this.closeActivity();
+			}
+		});
+		
+		AlertDialog dialog = builder.create();
+		dialog.setCanceledOnTouchOutside(false);
+		dialog.show();
+	}
+	
+	
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		super.onActivityResult(requestCode, resultCode, data);
 		
 		switch(requestCode){
-			case(PERMISSIONS_REQUEST_CODE):{
-				
+			case(BLUETOOTH_ENABLE_REQUEST_CODE):{
+				if(resultCode!=RESULT_OK){
+					this.onUserCancelledBluetooth();
+				}
 				break;
 			}
 			case(DISCOVERABLE_REQUEST_CODE):{
+				if(resultCode<=0){
+					this.onUserCancelledDiscoverability();
+				}
 				break;
 			}
 			default:{
@@ -344,6 +521,33 @@ public class MeetingActivity extends AppCompatActivity implements NfcAdapter.Cre
 				break;
 			}
 		}
+	}
+	
+	@Override
+	public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 		
+		switch(requestCode){
+			case(PERMISSIONS_REQUEST_CODE):{
+				boolean retry = false;
+				
+				for(int result : grantResults){
+					if(result == PackageManager.PERMISSION_DENIED){
+						retry = true;
+					}
+				}
+				
+				if(retry){
+					this.onUserCancelledLocation();
+				}
+				
+				
+				break;
+			}
+			default:{
+				
+				break;
+			}
+		}
 	}
 }
