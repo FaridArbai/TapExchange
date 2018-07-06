@@ -1,6 +1,10 @@
 package com.faridarbai.tapexchange;
 
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 
@@ -14,44 +18,82 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.faridarbai.tapexchange.users.Form;
+import com.faridarbai.tapexchange.users.User;
+
 public class StartupActivity extends AppCompatActivity {
 	private static final String TAG = "StartupActivity";
-	private static final int NUM_PAGES = 2;
-	
+	private static final int NUM_PAGES = 3;
+	private static final int WELCOME_NUM_PAGE 	= 1;
+	private static final int FORM_NUM_PAGE 		= 2;
+	private static final int TUTORIAL_NUM_PAGE 	= 3;
+	public static final int REQUEST_CODE = 3011;
 	
 	private SectionsPagerAdapter pager_adapter;
 	private ViewPager view_pager;
 	
+	private User user;
+	
 	@Override
-	protected void onCreate(Bundle savedInstanceState) {
+	protected void onCreate(Bundle savedInstanceState){
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.startup_activity);
 		
 		Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
 		setSupportActionBar(toolbar);
-		// Create the adapter that will return a fragment for each of the three
-		// primary sections of the activity.
-		pager_adapter = new SectionsPagerAdapter(getSupportFragmentManager());
 		
-		// Set up the ViewPager with the sections adapter.
+		pager_adapter = new SectionsPagerAdapter(getSupportFragmentManager());
 		view_pager = (ViewPager) findViewById(R.id.container);
 		view_pager.setAdapter(pager_adapter);
 		
-		FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+		FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.startup_fab);
 		fab.setOnClickListener(new View.OnClickListener() {
 			@Override
-			public void onClick(View view) {
-				int current = view_pager.getCurrentItem();
-				int next = current+1;
-				
-				if(next<StartupActivity.NUM_PAGES){
-					view_pager.setCurrentItem(next);
-				}
-				else{
-					//Save user and push main_activity
-				}
+			public void onClick(View view){
+				StartupActivity.this.onNextClicked();
 			}
 		});
+		
+		this.initUser();
+	}
+	
+	
+	private void initUser(){
+		Bitmap default_image = BitmapFactory.decodeResource(this.getResources(), MainActivity.DEFAULT_RESOURCE_IMAGE);
+		User.writeImage(default_image, MainActivity.DEFAULT_IMAGE_PATH);
+		this.user = new User(MainActivity.DEFAULT_USERNAME, MainActivity.DEFAULT_IMAGE_PATH, this);
+	}
+	
+	private void onNextClicked(){
+		int current = view_pager.getCurrentItem();
+		int next = current+1;
+		boolean end_reached = (next==StartupActivity.NUM_PAGES);
+		
+		
+		if(current == (FORM_NUM_PAGE-1)){
+			View form_view = this.view_pager.getRootView();
+			Form form = new Form(form_view);
+			boolean mandatory_fields_are_filled = form.mandatoryFieldsAreFilled();
+			
+			if(mandatory_fields_are_filled){
+				form.updateUser(this.user);
+				this.user.save(MainActivity.USER_FILENAME);
+				view_pager.setCurrentItem(next);
+			}
+			else{
+				Snackbar.make(findViewById(R.id.startup_fab), "All mandatory fields must be filled", Snackbar.LENGTH_LONG).show();
+			}
+		}
+		else {
+			if (!end_reached) {
+				view_pager.setCurrentItem(next);
+			} else {
+				Intent result_intent = new Intent();
+				result_intent.putExtra("UserData", this.user.serialize());
+				setResult(1, result_intent);
+				finish();
+			}
+		}
 	}
 	
 	@Override
@@ -62,7 +104,7 @@ public class StartupActivity extends AppCompatActivity {
 			this.view_pager.setCurrentItem(current-1);
 		}
 		else{
-			super.onBackPressed();
+			this.moveTaskToBack(true);
 		}
 	}
 	
@@ -87,13 +129,16 @@ public class StartupActivity extends AppCompatActivity {
 			int fragment_number = getArguments().getInt(ARG_SECTION_NUMBER);
 			
 			switch(fragment_number){
-				case 1:{
+				case(StartupActivity.WELCOME_NUM_PAGE):{
 					root_view = inflater.inflate(R.layout.welcome_fragment, container, false);
 					break;
 				}
-				case 2:{
+				case(StartupActivity.FORM_NUM_PAGE):{
 					root_view = inflater.inflate(R.layout.form_fragment, container, false);
 					break;
+				}
+				case(StartupActivity.TUTORIAL_NUM_PAGE):{
+					root_view = inflater.inflate(R.layout.tutorial_fragment, container, false);
 				}
 				default:{
 					break;
@@ -117,7 +162,7 @@ public class StartupActivity extends AppCompatActivity {
 		
 		@Override
 		public int getCount() {
-			return 2;
+			return StartupActivity.NUM_PAGES;
 		}
 	}
 }
