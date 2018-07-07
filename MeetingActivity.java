@@ -22,6 +22,7 @@ import android.nfc.tech.NfcF;
 import android.nfc.tech.NfcV;
 import android.os.Build;
 import android.os.Parcelable;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -42,6 +43,7 @@ import com.faridarbai.tapexchange.users.User;
 
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
+import java.util.ArrayList;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 
@@ -51,6 +53,7 @@ public class MeetingActivity extends AppCompatActivity implements NfcAdapter.Cre
 	private static final int PERMISSIONS_REQUEST_CODE 			= 1013;
 	private static final int DISCOVERABLE_REQUEST_CODE 		= 1014;
 	private static final int BLUETOOTH_ENABLE_REQUEST_CODE	= 1015;
+	private static final int NFC_ENABLE_REQUEST_CODE			= 1016;
 	
 	
 	private static final String[] RUNTIME_PERMISSIONS = new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
@@ -63,7 +66,8 @@ public class MeetingActivity extends AppCompatActivity implements NfcAdapter.Cre
 	
 	private byte[] user_payload;
 	
-	private User user;
+	private Person user;
+	private ArrayList<PersonData> new_contacts_data;
 	
 	private BluetoothAdapter bluetooth_adapter;
 	
@@ -79,11 +83,14 @@ public class MeetingActivity extends AppCompatActivity implements NfcAdapter.Cre
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.meeting_activity);
 		
+		this.new_contacts_data = new ArrayList<PersonData>();
+		
 		this.getUserPayloadFromIntent();
 		
 		this.initNFC();
 		
 		this.initBluetooth();
+		
 		this.requestLocationPermissions();
 		this.enableBluetooth();
 	}
@@ -101,6 +108,11 @@ public class MeetingActivity extends AppCompatActivity implements NfcAdapter.Cre
 	
 	private void initNFC(){
 		this.nfc_adapter = NfcAdapter.getDefaultAdapter(this);
+		
+		if(!this.nfc_adapter.isEnabled()){
+			this.onNfcDisabled();
+		}
+		
 		this.nfc_adapter.setNdefPushMessageCallback(this, this);
 		
 		Intent intent = new Intent(this, getClass());
@@ -292,8 +304,8 @@ public class MeetingActivity extends AppCompatActivity implements NfcAdapter.Cre
 	protected void getUserPayloadFromIntent(){
 		Intent intent = getIntent();;
 		
-		UserData user_data = (UserData)intent.getSerializableExtra("UserData");
-		User user = new User(user_data,this);
+		PersonData person_data = (PersonData)intent.getSerializableExtra("PersonData");
+		Person user = new Person(person_data,this);
 		ProtocolMessage pm = new ProtocolMessage((Person)user);
 		
 		this.user_payload = pm.toByteArray();
@@ -307,9 +319,17 @@ public class MeetingActivity extends AppCompatActivity implements NfcAdapter.Cre
 	
 	protected void closeActivity(){
 		Intent result_intent = new Intent();
-		result_intent.putExtra("PersonData", this.user.serialize());
-		setResult(RESULT_OK, result_intent);
+		int result;
 		
+		if(this.new_contacts_data.size()==0){
+			result = RESULT_CANCELED;
+		}
+		else{
+			result = RESULT_OK;
+			result_intent.putExtra("NewContactsData", this.new_contacts_data);
+		}
+		
+		setResult(result, result_intent);
 		finish();
 	}
 	
@@ -318,12 +338,10 @@ public class MeetingActivity extends AppCompatActivity implements NfcAdapter.Cre
 		closeActivity();
 	}
 	
-	
-	
-	
 	public void onReceiveFinished(byte[] payload){
 		final Person new_contact = ProtocolMessage.fromByteArray(payload, this);
-		this.user.addContact(new_contact);
+		PersonData new_contact_data = new_contact.serialize();
+		this.new_contacts_data.add(new_contact_data);
 		
 		this.runOnUiThread(new Runnable() {
 			@Override
@@ -348,6 +366,10 @@ public class MeetingActivity extends AppCompatActivity implements NfcAdapter.Cre
 		String image_path = new_contact.getImagePath();
 		Bitmap contact_image = BitmapFactory.decodeFile(image_path);
 		contact_image_view.setImageBitmap(contact_image);
+		
+		contact_username.setText(new_contact.getName());
+		contact_job.setText(new_contact.getJobStatus());
+		contact_location.setText(new_contact.getLocationStatus());
 		
 		builder.setView(dialog_view);
 		final AlertDialog dialog = builder.create();
@@ -498,6 +520,33 @@ public class MeetingActivity extends AppCompatActivity implements NfcAdapter.Cre
 		dialog.show();
 	}
 	
+	private void onNfcDisabled(){
+		final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		String message = "NFC must be enabled in order to exchange profile information.";
+		
+		builder.setIcon(R.drawable.nfc_icon);
+		builder.setTitle("Settings error");
+		builder.setMessage(message);
+		builder.setPositiveButton("NFC SETTINGS", new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				Intent intent = new Intent(Settings.ACTION_NFC_SETTINGS);
+				startActivityForResult(intent, MeetingActivity.NFC_ENABLE_REQUEST_CODE);
+			}
+		});
+		
+		builder.setNegativeButton("EXIT", new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				MeetingActivity.this.closeActivity();
+			}
+		});
+		
+		AlertDialog dialog = builder.create();
+		dialog.setCanceledOnTouchOutside(false);
+		dialog.show();
+	}
+	
 	
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -516,8 +565,12 @@ public class MeetingActivity extends AppCompatActivity implements NfcAdapter.Cre
 				}
 				break;
 			}
+			case(NFC_ENABLE_REQUEST_CODE):{
+				if(!this.nfc_adapter.isEnabled()){
+					this.onNfcDisabled();
+				}
+			}
 			default:{
-				
 				break;
 			}
 		}
