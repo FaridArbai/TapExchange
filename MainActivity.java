@@ -14,6 +14,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 
 import android.content.Intent;
+import android.view.ViewTreeObserver;
 
 import com.faridarbai.tapexchange.graphical.ContactsViewAdapter;
 import com.faridarbai.tapexchange.profiles.UserProfile;
@@ -23,19 +24,21 @@ import com.faridarbai.tapexchange.users.Person;
 import com.faridarbai.tapexchange.users.User;
 
 import java.io.File;
+import java.lang.reflect.Array;
+import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity{
 	private static final String TAG = "MainActivity";
 	
 	ContactsViewAdapter contacts_adapter;
 	
-	int DEFAULT_RESOURCE_IMAGE = R.drawable.executive;
+	public static int DEFAULT_RESOURCE_IMAGE = R.drawable.executive;
 	
-	static public String FILES_PATH;
+	public static String FILES_PATH;
 	
-	String DEFAULT_IMAGE_PATH;
-	String DEFAULT_USERNAME;
-	String USER_FILENAME;
+	public static String DEFAULT_IMAGE_PATH;
+	public static String DEFAULT_USERNAME;
+	public static String USER_FILENAME;
 	
 	private User user;
 	
@@ -54,28 +57,40 @@ public class MainActivity extends AppCompatActivity{
 			}
 		});
 		
-		this.initConstants();
+		this.initGUIListener();
+		this.initDataConstants();
 		this.checkFirstLaunch();
-		
-		this.loadUser();
-		
-		this.contacts_adapter = new ContactsViewAdapter(this.user, this);
-		initContactsView();
 	}
 	
 	private void openMeetingActivity(){
-		this.openActivity(this.user, MeetingActivity.class, MeetingActivity.REQUEST_CODE);
+		this.openActivity((Person)this.user, MeetingActivity.class, MeetingActivity.REQUEST_CODE);
 	}
 	
 	private void loadUser(){
 		this.user = User.load(USER_FILENAME, this);
 	}
 	
-	private void initConstants(){
+	private void initDataConstants(){
 		FILES_PATH = getFilesDir().getAbsolutePath();
 		DEFAULT_IMAGE_PATH = FILES_PATH + "/default.png";
 		DEFAULT_USERNAME = "Unknown Name";
 		USER_FILENAME = FILES_PATH + "/data.dat";
+	}
+	
+	private void initGUIListener(){
+		ViewTreeObserver vto = this.getWindow().getDecorView().getViewTreeObserver();
+		vto.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+			@Override
+			public void onGlobalLayout() {
+				initGUIConstants();
+			}
+		});
+	}
+	
+	private void initGUIConstants(){
+		int width = this.getWindow().getDecorView().getWidth();
+		Person.AVATAR_SIZE = width/4;
+		Person.BACKGROUND_SIZE = width;
 	}
 	
 	private void checkFirstLaunch(){
@@ -83,20 +98,13 @@ public class MainActivity extends AppCompatActivity{
     	boolean first_launch = (user_file.exists()==false);
 		
 		if (first_launch) {
-			// Write default image into files/ and serialize the user file
-      	Bitmap default_image = BitmapFactory.decodeResource(this.getResources(), DEFAULT_RESOURCE_IMAGE);
-      	
-      	User.writeImage(default_image, DEFAULT_IMAGE_PATH);
-      	
-      	User new_user = new User(DEFAULT_USERNAME, DEFAULT_IMAGE_PATH, this);
-			
-			Log.d(TAG, "checkFirstLaunch: " + new_user.getName());
-			Log.d(TAG, "checkFirstLaunch: " + new_user.getImagePath());
-      	
-      	
-      	new_user.save(USER_FILENAME);
-      	
+      	Intent intent = new Intent(this, StartupActivity.class);
+			startActivityForResult(intent, StartupActivity.REQUEST_CODE);
     	}
+    	else{
+			this.loadUser();
+			initContactsView();
+		}
 	}
 	
 	
@@ -149,43 +157,102 @@ public class MainActivity extends AppCompatActivity{
 		startActivityForResult(intent, request_code);
 	}
 	
-	public void openActivity(User user, Class activity_class, int request_code){
-		Intent intent = new Intent(this, activity_class);
-		
-		UserData user_data = user.serialize();
-		intent.putExtra("UserData", user_data);
-		startActivityForResult(intent, request_code);
-	}
-	
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		super.onActivityResult(requestCode, resultCode, data);
 		
-		PersonData person_data = (PersonData)data.getExtras().getSerializable("PersonData");
-		Person person = new Person(person_data,this);
-		
 		switch(requestCode){
 			case(UserProfile.REQUEST_CODE):{
+				PersonData person_data = (PersonData)data.getExtras().getSerializable("PersonData");
+				Person person = new Person(person_data,this);
 				this.user = User.merge(person, this.user);
 				this.user.save(USER_FILENAME);
 				break;
 			}
 			case(MeetingActivity.REQUEST_CODE):{
-				
-				/**
-					this.user.getContacts().add(person);
-					int n_contacts = this.user.getContacts().size();
-					this.contacts_adapter.notifyItemInserted(n_contacts-1);
-				**/
+				if(resultCode==RESULT_OK){
+					ArrayList<PersonData> new_contacts_data = (ArrayList<PersonData>)data.getExtras().getSerializable("NewContactsData");
+					this.addNewContacts(new_contacts_data);
+				}
 				break;
 			}
+			case(StartupActivity.REQUEST_CODE):{
+				UserData user_data = (UserData)data.getExtras().getSerializable("UserData");
+				this.user = new User(user_data,this);
+				initContactsView();
+			}
 			default:{
-				
 				break;
 			}
 		}
-		
 	}
+	
+	
+	private void addNewContacts(ArrayList<PersonData> new_contacts_data){
+		Person current_contact;
+		
+		for(PersonData contact_data : new_contacts_data){
+			current_contact = new Person(contact_data, this);
+			this.user.addContact(current_contact);
+			this.contacts_adapter.notifyItemInserted(0);
+		}
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 }
 
 
