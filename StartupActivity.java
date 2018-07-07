@@ -3,6 +3,7 @@ package com.faridarbai.tapexchange;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
@@ -17,9 +18,15 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 
+import com.faridarbai.tapexchange.graphical.form.SectionFormAdapter;
 import com.faridarbai.tapexchange.users.Form;
+import com.faridarbai.tapexchange.users.Person;
 import com.faridarbai.tapexchange.users.User;
+import com.theartofdev.edmodo.cropper.CropImage;
+
+import de.hdodenhof.circleimageview.CircleImageView;
 
 public class StartupActivity extends AppCompatActivity {
 	private static final String TAG = "StartupActivity";
@@ -34,6 +41,10 @@ public class StartupActivity extends AppCompatActivity {
 	
 	private User user;
 	
+	
+	private SectionFormAdapter form_adapter;
+	
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState){
 		super.onCreate(savedInstanceState);
@@ -42,6 +53,7 @@ public class StartupActivity extends AppCompatActivity {
 		Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
 		setSupportActionBar(toolbar);
 		
+		PlaceholderFragment.activity = this;
 		pager_adapter = new SectionsPagerAdapter(getSupportFragmentManager());
 		view_pager = (ViewPager) findViewById(R.id.container);
 		view_pager.setAdapter(pager_adapter);
@@ -55,6 +67,24 @@ public class StartupActivity extends AppCompatActivity {
 		});
 		
 		this.initUser();
+		this.initGUIListener();
+	}
+	
+	private void initGUIListener(){
+		ViewTreeObserver vto = this.getWindow().getDecorView().getViewTreeObserver();
+		vto.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+			@Override
+			public void onGlobalLayout() {
+				initGUIConstants();
+			}
+		});
+	}
+	
+	private void initGUIConstants(){
+		int width = this.getWindow().getDecorView().getWidth();
+		Person.AVATAR_SIZE = width/4;
+		Person.BACKGROUND_SIZE = width;
+		Log.d(TAG, "initGUIConstants: " + Person.AVATAR_SIZE);
 	}
 	
 	
@@ -110,6 +140,7 @@ public class StartupActivity extends AppCompatActivity {
 	
 	public static class PlaceholderFragment extends Fragment {
 		private static final String ARG_SECTION_NUMBER = "section_number";
+		public static AppCompatActivity activity;
 		
 		public PlaceholderFragment() {
 		}
@@ -135,6 +166,13 @@ public class StartupActivity extends AppCompatActivity {
 				}
 				case(StartupActivity.FORM_NUM_PAGE):{
 					root_view = inflater.inflate(R.layout.form_fragment, container, false);
+					CircleImageView avatar_view = root_view.findViewById(R.id.form_avatar);
+					avatar_view.setOnClickListener(new View.OnClickListener() {
+						@Override
+						public void onClick(View v) {
+							Form.openImageHandler(activity);
+						}
+					});
 					break;
 				}
 				case(StartupActivity.TUTORIAL_NUM_PAGE):{
@@ -165,4 +203,84 @@ public class StartupActivity extends AppCompatActivity {
 			return StartupActivity.NUM_PAGES;
 		}
 	}
+	
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		super.onActivityResult(requestCode, resultCode, data);
+		
+		switch(requestCode){
+			case(CropImage.CROP_IMAGE_ACTIVITY_REQUEST_CODE):{
+				CropImage.ActivityResult result = CropImage.getActivityResult(data);
+				
+				if(resultCode==RESULT_OK) {
+					Uri cropped_uri = result.getUri();
+					Form.handleNewAvatar(cropped_uri, this.user, this);
+				}
+				break;
+			}
+			default:{
+				break;
+			}
+		}
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 }
