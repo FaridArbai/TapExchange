@@ -3,6 +3,7 @@ package com.faridarbai.tapexchange.graphical.form;
 import android.content.Context;
 import android.support.annotation.NonNull;
 import android.support.constraint.ConstraintLayout;
+import android.support.design.widget.TextInputEditText;
 import android.support.design.widget.TextInputLayout;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -14,26 +15,23 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.faridarbai.tapexchange.R;
+import com.faridarbai.tapexchange.graphical.Data;
 
 import java.util.ArrayList;
 
 public class DataFormAdapter  extends RecyclerView.Adapter<DataFormAdapter.ViewHolder>{
 	private static final String TAG = "DataFormAdapter";
 	
-	private ArrayList<String> fields = new ArrayList<>();
+	private ArrayList<Data> fields;
 	private Context context;
 	
-	public DataFormAdapter(Context context, ArrayList<String> fields) {
+	public DataFormAdapter(Context context, ArrayList<Data> fields) {
 		this.fields = fields;
 		this.context = context;
 	}
 	
-	public void add(String data){
+	public void add(Data data){
 		this.fields.add(data);
-	}
-	
-	public ArrayList<String> getFields() {
-		return fields;
 	}
 	
 	@NonNull
@@ -47,9 +45,22 @@ public class DataFormAdapter  extends RecyclerView.Adapter<DataFormAdapter.ViewH
 	
 	@Override
 	public void onBindViewHolder(@NonNull DataFormAdapter.ViewHolder holder, int position) {
-		String  field_name = this.fields.get(position);
+		final Data data = this.fields.get(position);
+		String field_name = data.getDataField();
+		String field_value = data.getDataValue();
 		
-		holder.field.setHint(field_name);
+		final TextInputEditText field = holder.field;
+		TextInputLayout field_layout = holder.field_layout;
+		
+		field_layout.setHint(field_name);
+		field.setText(field_value);
+		
+		holder.field.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+			@Override
+			public void onFocusChange(View v, boolean hasFocus) {
+				data.setDataValue(field.getText().toString());
+			}
+		});
 	}
 	
 	@Override
@@ -58,14 +69,14 @@ public class DataFormAdapter  extends RecyclerView.Adapter<DataFormAdapter.ViewH
 	}
 	
 	public class ViewHolder extends RecyclerView.ViewHolder{
-		EditText field;
+		TextInputEditText field;
 		TextInputLayout field_layout;
 		
 		public ViewHolder(View itemView) {
 			super(itemView);
 			
 			this.field_layout = (TextInputLayout)itemView.findViewById(R.id.form_field_layout);
-			this.field = (EditText)itemView.findViewById(R.id.form_field);
+			this.field = (TextInputEditText)itemView.findViewById(R.id.form_field);
 		}
 	}
 	
