@@ -29,10 +29,6 @@ public class SectionViewAdapter extends RecyclerView.Adapter<SectionViewAdapter.
 		return section_list;
 	}
 	
-	public void refreshContext(Context context){
-		this.context = context;
-	}
-	
 	public void addEntry(String section_title, String type, String field){
 		int n_sections = section_list.size();
 		boolean found = false;
@@ -45,11 +41,9 @@ public class SectionViewAdapter extends RecyclerView.Adapter<SectionViewAdapter.
 		}
 		
 		if(found){
-			Log.d(TAG, "addEntry: FOUND IT");
 			current_section.appendData(type, field);
 		}
 		else{
-			Log.d(TAG, "addEntry: DIDNT FOUND IT");
 			ArrayList<Data> new_data_list = new ArrayList<>();
 			new_data_list.add(new Data(type, field));
 			Section section = new Section(section_title, new_data_list, this.context);
@@ -75,13 +69,9 @@ public class SectionViewAdapter extends RecyclerView.Adapter<SectionViewAdapter.
 		Section section = this.section_list.get(position);
 		final String section_title = section.getTitle();
 		
-		Log.d(TAG, "onBindViewHolder: Included item at position " + position);
-		
 		//put the whole object data into the item place
 		holder.section_title.setText(section_title);
-		
 		section.inflateDataIntoRecycler(holder.section_data_view, context);
-		
 	}
 	
 	@Override
@@ -97,9 +87,9 @@ public class SectionViewAdapter extends RecyclerView.Adapter<SectionViewAdapter.
 		public ViewHolder(View itemView) {
 			super(itemView);
 			
-			this.section_title = itemView.findViewById(R.id.section_title);
-			this.section_data_view = itemView.findViewById(R.id.section_data_view);
-			this.section_item_layout = itemView.findViewById(R.id.section_item_layout);
+			this.section_title = (TextView) itemView.findViewById(R.id.section_title);
+			this.section_data_view = (RecyclerView) itemView.findViewById(R.id.section_data_view);
+			this.section_item_layout = (ConstraintLayout) itemView.findViewById(R.id.section_item_layout);
 		}
 	}
 	

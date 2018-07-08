@@ -15,10 +15,11 @@ import com.faridarbai.tapexchange.R;
 
 import java.util.ArrayList;
 
+
 public class DataViewAdapter  extends RecyclerView.Adapter<DataViewAdapter.ViewHolder>{
 	private static final String TAG = "DataViewAdapter";
 	
-	private ArrayList<Data> data_list = new ArrayList<>();
+	private ArrayList<Data> data_list;
 	private Context context;
 	
 	public DataViewAdapter(Context context, ArrayList<Data> data_list) {
@@ -49,22 +50,14 @@ public class DataViewAdapter  extends RecyclerView.Adapter<DataViewAdapter.ViewH
 		final String data_field = data.getDataField();
 		String data_value = data.getDataValue();
 		
-		Log.d(TAG, "onBindViewHolder: Included item at position " + position);
+		if(data_value.equals("")){
+			holder.data_item_layout.setVisibility(View.GONE);
+		}
+		else{
+			holder.data_field.setText(data_field);
+			holder.data_value.setText(data_value);
+		}
 		
-		//put the whole object data into the item place
-		holder.data_field.setText(data_field);
-		holder.data_value.setText(data_value);
-		//holder.data_icon.setImageBitmap(data_icon);
-		
-		/**
-		holder.data_field.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				Log.d(TAG, "onClick: Clicked on" + data_field);
-				Toast.makeText(context, data_field, Toast.LENGTH_SHORT).show();
-			}
-		});
-		 */
 	}
 	
 	@Override
@@ -81,10 +74,10 @@ public class DataViewAdapter  extends RecyclerView.Adapter<DataViewAdapter.ViewH
 		public ViewHolder(View itemView) {
 			super(itemView);
 			
-			this.data_icon = itemView.findViewById(R.id.data_icon);
-			this.data_field = itemView.findViewById(R.id.data_field);
-			this.data_value = itemView.findViewById(R.id.data_value);
-			data_item_layout = itemView.findViewById(R.id.data_item_layout);
+			this.data_icon = (ImageView) itemView.findViewById(R.id.data_icon);
+			this.data_field = (TextView) itemView.findViewById(R.id.data_field);
+			this.data_value = (TextView) itemView.findViewById(R.id.data_value);
+			data_item_layout = (ConstraintLayout) itemView.findViewById(R.id.data_item_layout);
 		}
 	}
 	
